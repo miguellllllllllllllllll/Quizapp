@@ -4,60 +4,55 @@ import random
 # Verbindung zur MongoDB
 client = MongoClient("mongodb://localhost:27017/")
 db = client["quizApp"]
-collection = db["quiz_keywords"]
+questions_collection = db["quiz_questions"]
+keywords_collection = db["quiz_keywords"]
 
-def get_quiz_questions():
-    """Holt alle Quizfragen aus der Datenbank."""
-    return list(collection.find({}, {"_id": 0}))
+def get_questions():
+    """Holt alle Fragenvorlagen aus der Datenbank."""
+    return list(questions_collection.find({}, {"_id": 0}))
 
-def get_wrong_answers(correct_answer, all_answers):
-    """Generiert zwei falsche Antworten, die sich von der richtigen unterscheiden."""
-    wrong_answers = [ans for ans in all_answers if ans != correct_answer]
-    return random.sample(wrong_answers, 2)  # Wähle 2 falsche Antworten zufällig aus
+def get_keywords():
+    """Holt alle Platzhalter-Werte aus der Datenbank."""
+    keywords = list(keywords_collection.find({}, {"_id": 0}))
+    return {kw["placeholder"]: kw["value"] for kw in keywords}
+
+def fill_question_template(template, keywords):
+    """Ersetzt Platzhalter in der Vorlage mit Werten aus der Datenbank."""
+    for placeholder, value in keywords.items():
+        template = template.replace(f"{{{placeholder}}}", value)
+    return template
 
 def start_quiz():
     """Startet das Quiz."""
-    print("Willkommen zum Quiz mit Mehrfachauswahl!")
-    print("Wähle die richtige Antwort aus (gib 'exit' ein, um zu beenden).\n")
+    print("Willkommen zum Schweiz-Quiz!")
+    print("Beantworte die folgenden Fragen (gib 'exit' ein, um zu beenden).\n")
 
-    questions = get_quiz_questions()
-    random.shuffle(questions)  # Fragen zufällig mischen
-
-    # Liste aller möglichen Antworten für falsche Optionen
-    all_answers = [q["answer"] for q in questions]
-
+    questions = get_questions()
+    keywords = get_keywords()
     score = 0
-    for i, q in enumerate(questions, 1):
-        correct_answer = q["answer"]
-        wrong_answers = get_wrong_answers(correct_answer, all_answers)
+    total_questions = len(questions)
 
-        # Optionen mischen (eine richtige und zwei falsche Antworten)
-        options = [correct_answer] + wrong_answers
-        random.shuffle(options)
+    for i, question in enumerate(questions, 1):
+        # Vorlage ausfüllen
+        filled_question = fill_question_template(question["template"], keywords)
 
-        print(f"Frage {i}: {q['question']}")
-        for j, option in enumerate(options, 1):
-            print(f"{j}. {option}")
+        print(f"Frage {i}: {filled_question}")
+        user_answer = input("Deine Antwort: ").strip()
 
-        user_input = input("Wähle die richtige Antwort (1/2/3 oder 'exit'): ").strip()
-
-        if user_input.lower() == "exit":
+        if user_answer.lower() == "exit":
             print("\nBeende das Quiz...")
             break
 
-        if user_input.isdigit() and 1 <= int(user_input) <= 3:
-            selected_option = options[int(user_input) - 1]
-            if selected_option == correct_answer:
-                print("Richtig!")
-                score += 1
-            else:
-                print(f"Falsch! Die richtige Antwort ist: {correct_answer}")
+        # Antwort überprüfen
+        if user_answer.lower() == question["answer"].lower():
+            print("Richtig!")
+            score += 1
         else:
-            print("Ungültige Eingabe! Bitte wähle eine Zahl zwischen 1 und 3.")
+            print(f"Falsch! Die richtige Antwort ist: {question['answer']}")
 
         print("-" * 30)
 
-    print(f"Quiz beendet! Deine Punktzahl: {score}/{len(questions)}")
+    print(f"Quiz beendet! Deine Punktzahl: {score}/{total_questions}")
 
 if __name__ == "__main__":
     start_quiz()
