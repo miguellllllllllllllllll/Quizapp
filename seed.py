@@ -8,33 +8,44 @@ keywords_collection = db["quiz_schluesselwoerter"]
 
 # Fragenvorlagen
 questions = [
-    { "template": "Was ist die Hauptstadt von {country}?", "answer": "Bern" },
-    { "template": "Welcher ist der höchste Berg in {country}?", "answer": "Matterhorn" },
-    { "template": "Wie viele Einwohner hat {city}?", "answer": "{population}" },
-    { "template": "Wie groß ist die Fläche von {city} in Quadratkilometern?", "answer": "{area}" },
-    { "template": "In welchem Kanton liegt {city}?", "answer": "{canton}" }
+    { "template": "Was ist die Hauptstadt von {country}?", "answer": "Bern", "type": "city" },
+    { "template": "Welcher ist der höchste Berg in {country}?", "answer": "Matterhorn", "type": "mountain" },
+    { "template": "Wie viele Einwohner hat {city}?", "answer": "{population}", "type": "number" },
+    { "template": "Wie groß ist die Fläche von {city} in Quadratkilometern?", "answer": "{area}", "type": "number" },
+    { "template": "In welchem Kanton liegt {city}?", "answer": "{canton}", "type": "canton" }
 ]
 
 # Schlüsselwörter mit falschen Antworten
 keywords = [
     { "placeholder": "country", "value": "Schweiz", "incorrect": ["Deutschland", "Österreich", "Frankreich"] },
-    { 
-        "placeholder": "Zürich", 
+    {
+        "placeholder": "Zürich",
         "value": {"city": "Zürich", "population": "415215", "area": "91.88", "canton": "Zürich"},
-        "incorrect": [{"city": "Genf", "population": "201818", "area": "15.93", "canton": "Genf"},
-                      {"city": "Basel", "population": "177654", "area": "22.75", "canton": "Basel-Stadt"}]
+        "incorrect": [
+            {"city": "Genf", "population": "201818", "area": "15.93", "canton": "Genf"},
+            {"city": "Basel", "population": "177654", "area": "22.75", "canton": "Basel-Stadt"}
+        ]
     },
-    { 
-        "placeholder": "Genf", 
+    {
+        "placeholder": "Genf",
         "value": {"city": "Genf", "population": "201818", "area": "15.93", "canton": "Genf"},
-        "incorrect": [{"city": "Zürich", "population": "415215", "area": "91.88", "canton": "Zürich"},
-                      {"city": "Lausanne", "population": "140202", "area": "41.37", "canton": "Waadt"}]
+        "incorrect": [
+            {"city": "Zürich", "population": "415215", "area": "91.88", "canton": "Zürich"},
+            {"city": "Lausanne", "population": "140202", "area": "41.37", "canton": "Waadt"}
+        ]
     },
-    { 
-        "placeholder": "Basel", 
+    {
+        "placeholder": "Basel",
         "value": {"city": "Basel", "population": "177654", "area": "22.75", "canton": "Basel-Stadt"},
-        "incorrect": [{"city": "Bern", "population": "133883", "area": "51.62", "canton": "Bern"},
-                      {"city": "Luzern", "population": "82257", "area": "29.06", "canton": "Luzern"}]
+        "incorrect": [
+            {"city": "Bern", "population": "133883", "area": "51.62", "canton": "Bern"},
+            {"city": "Luzern", "population": "82257", "area": "29.06", "canton": "Luzern"}
+        ]
+    },
+    {
+        "placeholder": "mountain",
+        "value": "Matterhorn",
+        "incorrect": ["Mont Blanc", "Dufourspitze", "Eiger", "Piz Bernina"]
     }
 ]
 
