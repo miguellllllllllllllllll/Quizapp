@@ -7,9 +7,13 @@ db = client["quizApp"]
 questions_collection = db["quiz_fragen"]
 keywords_collection = db["quiz_schluesselwoerter"]
 
-def get_random_question():
-    """Zufällige Frage aus der Datenbank abrufen."""
-    return questions_collection.aggregate([{ "$sample": { "size": 1 } }]).next()
+def get_random_question(asked_questions):
+    """Zufällige Frage aus der Datenbank abrufen, die noch nicht gestellt wurde."""
+    while True:
+        random_question = questions_collection.aggregate([{ "$sample": { "size": 1 } }]).next()
+        # Überprüfen, ob die Frage bereits gestellt wurde
+        if random_question["_id"] not in asked_questions:
+            return random_question
 
 def get_keywords():
     """Schlüsselwörter aus der Datenbank abrufen."""
@@ -39,22 +43,26 @@ def generate_question(question_template, keywords):
         question_template = question_template.replace(placeholder, str(keywords.get(key, placeholder)))
     return question_template
 
-def generate_incorrect_answers(correct_answer, keywords, question_template):
-    """Falsche Antworten aus der Datenbank generieren."""
+def generate_incorrect_answers(correct_answer, keywords, question_template, question_type):
+    """Falsche Antworten basierend auf dem Fragetyp generieren."""
     incorrect_answers = []
 
-    if "{city}" in question_template:
+    if question_type == "city":
         incorrect_answers = [kw["city"] for kw in keywords["incorrect_city"]]
-    elif "{canton}" in question_template:
+    elif question_type == "canton":
         incorrect_answers = [kw["canton"] for kw in keywords["incorrect_city"]]
-    elif "{country}" in question_template:
-        incorrect_answers = keywords.get("incorrect_country", [])
-    elif "{population}" in question_template:
+    elif question_type == "number":
         incorrect_answers = [kw["population"] for kw in keywords["incorrect_city"]]
-    elif "{area}" in question_template:
-        incorrect_answers = [kw["area"] for kw in keywords["incorrect_city"]]
+    elif question_type == "mountain":
+        incorrect_answers = keywords.get("incorrect_mountain", [])
 
     return incorrect_answers[:2]  # Nur zwei falsche Antworten zurückgeben
+
+def remove_duplicates(correct_answer, incorrect_answers):
+    """Duplikate der richtigen Antwort aus den falschen Antworten entfernen."""
+    unique_answers = set(incorrect_answers)
+    unique_answers.add(correct_answer)  # Die richtige Antwort hinzufügen
+    return list(unique_answers)
 
 def quiz():
     """Das Quiz starten."""
@@ -63,10 +71,12 @@ def quiz():
 
     score = 0
     total_questions = 5  # Anzahl der Fragen, die gestellt werden sollen
+    asked_questions = set()  # IDs der gestellten Fragen speichern
 
     for i in range(total_questions):
         # Zufällige Frage und Schlüsselwörter abrufen
-        random_question = get_random_question()
+        random_question = get_random_question(asked_questions)
+        asked_questions.add(random_question["_id"])  # Frage als gestellt markieren
         keywords = get_keywords()
 
         # Frage generieren
@@ -74,8 +84,11 @@ def quiz():
         correct_answer = generate_question(random_question["answer"], keywords)
 
         # Falsche Antworten generieren
-        incorrect_answers = generate_incorrect_answers(correct_answer, keywords, random_question["template"])
-        options = [correct_answer] + incorrect_answers
+        question_type = random_question.get("type", "generic")
+        incorrect_answers = generate_incorrect_answers(correct_answer, keywords, random_question["template"], question_type)
+
+        # Duplikate entfernen und einzigartige Antworten erzeugen
+        options = remove_duplicates(correct_answer, incorrect_answers)
         random.shuffle(options)
 
         # Frage und Optionen anzeigen
