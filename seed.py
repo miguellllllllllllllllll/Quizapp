@@ -10,61 +10,32 @@ keywords_collection = db["quiz_schluesselwoerter"]
 questions = [
     { "template": "Was ist die Hauptstadt von {country}?", "answer": "Bern" },
     { "template": "Welcher ist der höchste Berg in {country}?", "answer": "Matterhorn" },
-    { "template": "Welcher Fluss fließt durch {country}?", "answer": "Rhein" },
-    { "template": "Wie heißt die offizielle Währung von {country}?", "answer": "Schweizer Franken" },
     { "template": "Wie viele Einwohner hat {city}?", "answer": "{population}" },
     { "template": "Wie groß ist die Fläche von {city} in Quadratkilometern?", "answer": "{area}" },
     { "template": "In welchem Kanton liegt {city}?", "answer": "{canton}" }
 ]
 
-# Platzhalter-Werte für Städte und andere Fragen
+# Schlüsselwörter mit falschen Antworten
 keywords = [
-    # Länderbezogene Daten
-    { "placeholder": "country", "value": "Schweiz" },
-    { "placeholder": "mountain", "value": "Matterhorn" },
-    { "placeholder": "river", "value": "Rhein" },
-    { "placeholder": "currency", "value": "Schweizer Franken" },
-    # Städte
-    # Zürich
-    { "placeholder": "city", "value": "Zürich" },
-    { "placeholder": "population", "value": "415215" },
-    { "placeholder": "area", "value": "91.88" },
-    { "placeholder": "canton", "value": "Zürich" },
-    # Genf
-    { "placeholder": "city", "value": "Genf" },
-    { "placeholder": "population", "value": "201818" },
-    { "placeholder": "area", "value": "15.93" },
-    { "placeholder": "canton", "value": "Genf" },
-    # Basel
-    { "placeholder": "city", "value": "Basel" },
-    { "placeholder": "population", "value": "177654" },
-    { "placeholder": "area", "value": "22.75" },
-    { "placeholder": "canton", "value": "Basel-Stadt" },
-    # Bern
-    { "placeholder": "city", "value": "Bern" },
-    { "placeholder": "population", "value": "133883" },
-    { "placeholder": "area", "value": "51.62" },
-    { "placeholder": "canton", "value": "Bern" },
-    # Lausanne
-    { "placeholder": "city", "value": "Lausanne" },
-    { "placeholder": "population", "value": "140202" },
-    { "placeholder": "area", "value": "41.37" },
-    { "placeholder": "canton", "value": "Waadt" },
-    # Luzern
-    { "placeholder": "city", "value": "Luzern" },
-    { "placeholder": "population", "value": "82257" },
-    { "placeholder": "area", "value": "29.06" },
-    { "placeholder": "canton", "value": "Luzern" },
-    # Lugano
-    { "placeholder": "city", "value": "Lugano" },
-    { "placeholder": "population", "value": "63743" },
-    { "placeholder": "area", "value": "75.98" },
-    { "placeholder": "canton", "value": "Tessin" },
-    # Winterthur
-    { "placeholder": "city", "value": "Winterthur" },
-    { "placeholder": "population", "value": "114220" },
-    { "placeholder": "area", "value": "68.04" },
-    { "placeholder": "canton", "value": "Zürich" }
+    { "placeholder": "country", "value": "Schweiz", "incorrect": ["Deutschland", "Österreich", "Frankreich"] },
+    { 
+        "placeholder": "Zürich", 
+        "value": {"city": "Zürich", "population": "415215", "area": "91.88", "canton": "Zürich"},
+        "incorrect": [{"city": "Genf", "population": "201818", "area": "15.93", "canton": "Genf"},
+                      {"city": "Basel", "population": "177654", "area": "22.75", "canton": "Basel-Stadt"}]
+    },
+    { 
+        "placeholder": "Genf", 
+        "value": {"city": "Genf", "population": "201818", "area": "15.93", "canton": "Genf"},
+        "incorrect": [{"city": "Zürich", "population": "415215", "area": "91.88", "canton": "Zürich"},
+                      {"city": "Lausanne", "population": "140202", "area": "41.37", "canton": "Waadt"}]
+    },
+    { 
+        "placeholder": "Basel", 
+        "value": {"city": "Basel", "population": "177654", "area": "22.75", "canton": "Basel-Stadt"},
+        "incorrect": [{"city": "Bern", "population": "133883", "area": "51.62", "canton": "Bern"},
+                      {"city": "Luzern", "population": "82257", "area": "29.06", "canton": "Luzern"}]
+    }
 ]
 
 # Datenbank löschen und neue Daten hinzufügen
