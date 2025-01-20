@@ -11,14 +11,10 @@ stats_collection = db["quiz_statistiken"]
 def get_keywords(attribute):
     """Daten zu einem Attribut aus der MongoDB holen."""
     pipeline = [
-        {"$match": {"attribute": attribute, "value": {"$exists": True, "$ne": None}}}
+        {"$match": {"attribute": attribute, "value": {"$exists": True, "$ne": None}}},
+        {"$sample": {"size": 1}}
     ]
-    entries = list(keywords_collection.aggregate(pipeline))
-
-    if len(entries) < 3:
-        raise ValueError("Nicht genügend Daten für das Attribut vorhanden.")
-
-    correct_entry = random.choice(entries)
+    correct_entry = keywords_collection.aggregate(pipeline).next()
     correct_value = correct_entry["value"]
     correct_name = correct_entry["name"]
 
@@ -31,10 +27,13 @@ def get_keywords(attribute):
                 raise TypeError(f"Der richtige Wert '{correct_value}' ist weder numerisch noch konvertierbar.")
 
     # Falsche Werte filtern
-    incorrect_entries = [entry for entry in entries if entry["name"] != correct_name]
-    
+    incorrect_entries = []
+    for entry in keywords_collection.find({"attribute": attribute, "value": {"$ne": None}}):
+        if entry["name"] != correct_name:  # Nicht denselben Ort nehmen
+            incorrect_entries.append(entry)
+
     # Zufällige falsche Optionen auswählen
-    incorrect_values = random.sample(incorrect_entries, k=2)
+    incorrect_values = random.sample(incorrect_entries, k=min(2, len(incorrect_entries)))
 
     return correct_entry, incorrect_values
 
@@ -89,6 +88,12 @@ def quiz():
                 score += 1
             else:
                 print(f"Falsch. Die richtige Antwort war: {correct_value}")
+            
+            # Zeige alle Optionen mit der richtigen Antwort und den falschen Antworten
+            print("\nLösungen:")
+            print(f"Richtige Antwort: {correct_value} ({correct_name})")
+            for entry in incorrect_entries:
+                print(f"Falsche Antwort: {entry['value']} ({entry['name']})")
         except (ValueError, IndexError):
             print(f"Ungültige Eingabe. Die richtige Antwort war: {correct_value}")
         
