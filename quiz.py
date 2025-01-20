@@ -1,113 +1,114 @@
-from pymongo import MongoClient
+import time
 import random
+from pymongo import MongoClient
 
-# Verbindung zur MongoDB herstellen
+# MongoDB-Verbindung herstellen
 client = MongoClient("mongodb://localhost:27017/")
-db = client["quizApp"]
-questions_collection = db["quiz_fragen"]
+db = client["quiz_db"]
 keywords_collection = db["quiz_schluesselwoerter"]
+stats_collection = db["quiz_statistiken"]
 
-def get_random_question(asked_questions):
-    """Zufällige Frage aus der Datenbank abrufen, die noch nicht gestellt wurde."""
-    while True:
-        random_question = questions_collection.aggregate([{ "$sample": { "size": 1 } }]).next()
-        # Überprüfen, ob die Frage bereits gestellt wurde
-        if random_question["_id"] not in asked_questions:
-            return random_question
+def get_keywords(attribute):
+    """Daten zu einem Attribut aus der MongoDB holen."""
+    pipeline = [
+        {"$match": {"attribute": attribute, "value": {"$exists": True, "$ne": None}}}
+    ]
+    entries = list(keywords_collection.aggregate(pipeline))
 
-def get_keywords():
-    """Schlüsselwörter aus der Datenbank abrufen."""
-    all_keywords = list(keywords_collection.find())
-    keywords_dict = {}
+    if len(entries) < 3:
+        raise ValueError("Nicht genügend Daten für das Attribut vorhanden.")
 
-    # Zufällige Stadt auswählen
-    city_data = random.choice([kw for kw in all_keywords if isinstance(kw.get("value"), dict)])
-    keywords_dict.update(city_data["value"])  # Stadt-spezifische Daten hinzufügen
-    keywords_dict["incorrect_city"] = city_data.get("incorrect", [])  # Falsche Stadt-Daten
+    correct_entry = random.choice(entries)
+    correct_value = correct_entry["value"]
+    correct_name = correct_entry["name"]
 
-    # Generelle Schlüsselwörter hinzufügen
-    for kw in all_keywords:
-        if not isinstance(kw.get("value"), dict) and "placeholder" in kw:
-            keywords_dict[kw["placeholder"]] = kw["value"]
-            keywords_dict[f"incorrect_{kw['placeholder']}"] = kw.get("incorrect", [])
+    # Sicherstellen, dass der richtige Wert numerisch ist, falls erforderlich
+    if attribute in ["Fläche", "Einwohner"]:
+        if not isinstance(correct_value, (int, float)):
+            try:
+                correct_value = float(correct_value)
+            except ValueError:
+                raise TypeError(f"Der richtige Wert '{correct_value}' ist weder numerisch noch konvertierbar.")
 
-    return keywords_dict
+    # Falsche Werte filtern
+    incorrect_entries = [entry for entry in entries if entry["name"] != correct_name]
+    
+    # Zufällige falsche Optionen auswählen
+    incorrect_values = random.sample(incorrect_entries, k=2)
 
-def generate_question(question_template, keywords):
-    """Frage generieren, indem Platzhalter ersetzt werden."""
-    while "{" in question_template and "}" in question_template:
-        start = question_template.find("{")
-        end = question_template.find("}", start) + 1
-        placeholder = question_template[start:end]
-        key = placeholder.strip("{}")
-        question_template = question_template.replace(placeholder, str(keywords.get(key, placeholder)))
-    return question_template
-
-def generate_incorrect_answers(correct_answer, keywords, question_template, question_type):
-    """Falsche Antworten basierend auf dem Fragetyp generieren."""
-    incorrect_answers = []
-
-    if question_type == "city":
-        incorrect_answers = [kw["city"] for kw in keywords["incorrect_city"]]
-    elif question_type == "canton":
-        incorrect_answers = [kw["canton"] for kw in keywords["incorrect_city"]]
-    elif question_type == "number":
-        incorrect_answers = [kw["population"] for kw in keywords["incorrect_city"]]
-    elif question_type == "mountain":
-        incorrect_answers = keywords.get("incorrect_mountain", [])
-
-    return incorrect_answers[:2]  # Nur zwei falsche Antworten zurückgeben
-
-def remove_duplicates(correct_answer, incorrect_answers):
-    """Duplikate der richtigen Antwort aus den falschen Antworten entfernen."""
-    unique_answers = set(incorrect_answers)
-    unique_answers.add(correct_answer)  # Die richtige Antwort hinzufügen
-    return list(unique_answers)
+    return correct_entry, incorrect_values
 
 def quiz():
-    """Das Quiz starten."""
-    print("Willkommen zum Schweizer Quiz!")
-    print("Beantworte die folgenden Fragen:\n")
+    """Quiz ausführen."""
+    name = input("Geben Sie Ihren Namen ein: ")
+    attributes = ["Fläche", "Einwohner", "Hauptstadt", "Höchster Berg"]
+    print("Wählen Sie ein Attribut:", ", ".join(attributes))
+    attribute = input("> ")
 
+    if attribute not in attributes:
+        print("Ungültiges Attribut.")
+        return
+
+    start_time = time.time()
     score = 0
-    total_questions = 5  # Anzahl der Fragen, die gestellt werden sollen
-    asked_questions = set()  # IDs der gestellten Fragen speichern
+    asked_questions = set()
 
-    for i in range(total_questions):
-        # Zufällige Frage und Schlüsselwörter abrufen
-        random_question = get_random_question(asked_questions)
-        asked_questions.add(random_question["_id"])  # Frage als gestellt markieren
-        keywords = get_keywords()
+    for i in range(5):
+        correct_entry, incorrect_entries = get_keywords(attribute)
+        correct_value = correct_entry["value"]
+        correct_name = correct_entry["name"]
 
-        # Frage generieren
-        question_text = generate_question(random_question["template"], keywords)
-        correct_answer = generate_question(random_question["answer"], keywords)
+        # Verhindern, dass die gleiche Frage mehrmals gestellt wird
+        while correct_name in asked_questions:
+            correct_entry, incorrect_entries = get_keywords(attribute)
+            correct_value = correct_entry["value"]
+            correct_name = correct_entry["name"]
 
-        # Falsche Antworten generieren
-        question_type = random_question.get("type", "generic")
-        incorrect_answers = generate_incorrect_answers(correct_answer, keywords, random_question["template"], question_type)
+        # Frage formulieren
+        if attribute in ["Fläche", "Einwohner"]:
+            question = f"Wie viel {attribute} hat {correct_name}?"
+        elif attribute == "Hauptstadt":
+            question = f"Was ist die Hauptstadt von {correct_name}?"
+        elif attribute == "Höchster Berg":
+            question = f"Welcher Berg ist der höchste in {correct_name}?"
 
-        # Duplikate entfernen und einzigartige Antworten erzeugen
-        options = remove_duplicates(correct_answer, incorrect_answers)
-        random.shuffle(options)
+        # Optionen generieren
+        all_options = [correct_value] + [entry["value"] for entry in incorrect_entries]
+        random.shuffle(all_options)
 
-        # Frage und Optionen anzeigen
-        print(f"Frage {i + 1}: {question_text}")
-        for idx, option in enumerate(options):
-            print(f"{idx + 1}. {option}")
+        # Frage stellen
+        print(f"Frage {i + 1}:")
+        print(question)
+        for idx, option in enumerate(all_options, start=1):
+            print(f"{idx}: {option}")
 
-        # Antwort des Spielers
         try:
-            user_choice = int(input("Deine Antwort (1/2/3): ")) - 1
-            if options[user_choice] == correct_answer:
-                print("Richtig! 🎉\n")
+            answer = int(input("> "))
+            if all_options[answer - 1] == correct_value:
+                print("Richtig!")
                 score += 1
             else:
-                print(f"Falsch! Die richtige Antwort ist: {correct_answer}\n")
+                print(f"Falsch. Die richtige Antwort war: {correct_value}")
         except (ValueError, IndexError):
-            print(f"Ungültige Eingabe! Die richtige Antwort war: {correct_answer}\n")
+            print(f"Ungültige Eingabe. Die richtige Antwort war: {correct_value}")
+        
+        asked_questions.add(correct_name)
 
-    print(f"Quiz beendet! Deine Punktzahl: {score} von {total_questions}")
+    elapsed_time = time.time() - start_time
+    print(f"Spiel beendet! Punkte: {score}, Zeit: {elapsed_time:.2f} Sekunden")
+
+    # Statistik speichern
+    stats_collection.insert_one({
+        "name": name,
+        "score": score,
+        "time": elapsed_time
+    })
+
+    # Top 3 Ergebnisse anzeigen
+    top_stats = stats_collection.find().sort([("score", -1), ("time", 1)]).limit(3)
+    print("Top 3 Ergebnisse:")
+    for stat in top_stats:
+        print(f"{stat['name']}: {stat['score']} Punkte, {stat['time']:.2f} Sekunden")
 
 if __name__ == "__main__":
     quiz()
